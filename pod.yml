@@ -1,30 +1,31 @@
-pipeline {
-    agent any
-    stages {
-        stage('Pull Code From GitHub') {
-            steps {
-                git 'https://github.com/kamesh20k/yonapp.git'
-            }
-        }
-        stage('Build the Docker image') {
-            steps {
-                sh 'sudo docker build -t yonapp /var/lib/jenkins/workspace/yonapp'
-                sh 'sudo docker tag yonapp kamesh95k/yonapp:latest'
-                sh 'sudo docker tag yonapp kamesh95k/yonapp:${BUILD_NUMBER}'
-            }
-        }
-        stage('Push the Docker image') {
-            steps {
-                sh 'sudo docker image push kamesh95k/yonapp:latest'
-                sh 'sudo docker image push kamesh95k/yonapp:${BUILD_NUMBER}'
-            }
-        }
-        stage('Deploy on Kubernetes') {
-            steps {
-                sh 'kubectl apply -f /var/lib/jenkins/workspace/yonapp/pod.yml'
-                sh 'kubectl rollout restart deployment loadbalancer-pod'
-            }
-        }
-    }
-}
-
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-svc
+spec:
+  type: LoadBalancer
+  selector:
+    app: hello
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loadbalancer-pod
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello 
+    spec:
+      containers:
+        - name: k8sproject
+          image: kamesh95k/yonapp:latest
+          imagePullPolicy: Always
